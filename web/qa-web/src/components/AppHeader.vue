@@ -23,22 +23,45 @@
           关于
         </a-menu-item>
       </a-menu>
-      <a-button type="primary" class="login-btn" @click="navigateTo('/doctor/login')">
-        <UserOutlined />
-        医生登录
-      </a-button>
+      <div class="header-actions">
+        <!-- 语言切换：仅首页展示；其他页面文案不切换 -->
+        <a-select
+          v-if="isHome"
+          :value="locale"
+          class="lang-select"
+          style="width: 120px"
+          :options="localeOptions"
+          @change="onLocaleChange"
+        />
+        <a-button type="primary" class="login-btn" @click="navigateTo('/doctor/login')">
+          <UserOutlined />
+          医生登录
+        </a-button>
+      </div>
     </div>
   </a-layout-header>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { HomeOutlined, MessageOutlined, TeamOutlined, InfoCircleOutlined, UserOutlined } from '@ant-design/icons-vue';
+import { useI18n, type Locale } from '../locales';
 
 const router = useRouter();
 const route = useRoute();
 const selectedKeys = ref<string[]>(['home']);
+const { locale, setLocale, t } = useI18n();
+
+const isHome = computed(() => route.path === '/');
+const localeOptions = computed(() => [
+  { value: 'zh-CN', label: t.value.lang.zh },
+  { value: 'en-US', label: t.value.lang.en },
+]);
+
+const onLocaleChange = (value: string | number) => {
+  setLocale(value as Locale);
+};
 
 watch(() => route.path, (newPath) => {
   if (newPath === '/') {
@@ -106,6 +129,16 @@ const navigateTo = (path: string) => {
   border: none;
   margin: 0 40px;
   line-height: 64px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lang-select {
+  line-height: normal;
 }
 
 .login-btn {

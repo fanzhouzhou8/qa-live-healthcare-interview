@@ -6,59 +6,86 @@
     </div>
 
     <div class="doctors-container">
-      <div class="doctors-grid">
-        <a-card
-          v-for="doctor in allDoctors"
-          :key="doctor.id"
-          class="doctor-card"
-          :class="{ 'active': doctor.isActive }"
-        >
-          <div class="card-header">
-            <img :src="doctor.avatar" :alt="doctor.name" class="doctor-avatar" />
-            <a-badge
-              :status="doctor.isActive ? 'processing' : 'default'"
-              :text="doctor.isActive ? '在线' : '离线'"
-            />
-          </div>
-          <div class="card-body">
-            <h3>{{ doctor.name }}</h3>
-            <p class="doctor-title">{{ doctor.title }}</p>
-            <p class="doctor-department">{{ doctor.department }}</p>
-            <p class="doctor-experience">{{ doctor.experience }}</p>
-            <div class="doctor-specialties">
-              <a-tag v-for="specialty in doctor.specialties" :key="specialty" color="blue">
-                {{ specialty }}
-              </a-tag>
+      <a-spin :spinning="loading">
+        <a-alert
+          v-if="errorMessage"
+          type="error"
+          show-icon
+          :message="errorMessage"
+          style="margin-bottom: 24px"
+        />
+        <a-empty v-else-if="!loading && allDoctors.length === 0" description="暂无医生数据" />
+        <div v-else class="doctors-grid">
+          <a-card
+            v-for="doctor in allDoctors"
+            :key="doctor.id"
+            class="doctor-card"
+            :class="{ 'active': doctor.isActive }"
+          >
+            <div class="card-header">
+              <img :src="doctor.avatar" :alt="doctor.name" class="doctor-avatar" />
+              <a-badge
+                :status="doctor.isActive ? 'processing' : 'default'"
+                :text="doctor.isActive ? '在线' : '离线'"
+              />
             </div>
-          </div>
-          <div class="card-footer">
-            <a-button
-              type="primary"
-              block
-              :disabled="!doctor.isActive"
-              @click="goToConsultation(doctor)"
-            >
-              {{ doctor.isActive ? '进入诊室' : '暂未开放' }}
-            </a-button>
-          </div>
-        </a-card>
-      </div>
+            <div class="card-body">
+              <h3>{{ doctor.name }}</h3>
+              <p class="doctor-title">{{ doctor.title }}</p>
+              <p class="doctor-department">{{ doctor.department }}</p>
+              <p class="doctor-experience">{{ doctor.experience }}</p>
+              <div class="doctor-specialties">
+                <a-tag v-for="specialty in doctor.specialties" :key="specialty" color="blue">
+                  {{ specialty }}
+                </a-tag>
+              </div>
+            </div>
+            <div class="card-footer">
+              <a-button
+                type="primary"
+                block
+                :disabled="!doctor.isActive"
+                @click="goToConsultation(doctor)"
+              >
+                {{ doctor.isActive ? '进入诊室' : '暂未开放' }}
+              </a-button>
+            </div>
+          </a-card>
+        </div>
+      </a-spin>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { store, Doctor } from '../store';
+import { fetchDoctors, type DoctorItem } from '../api/doctor';
 
 const router = useRouter();
+const allDoctors = ref<DoctorItem[]>([]);
+const loading = ref(false);
+const errorMessage = ref('');
 
-const allDoctors = computed(() => store.state.doctors);
+const loadDoctors = async () => {
+  loading.value = true;
+  errorMessage.value = '';
+  try {
+    allDoctors.value = await fetchDoctors();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '获取医生列表失败';
+  } finally {
+    loading.value = false;
+  }
+};
 
-const goToConsultation = (doctor: Doctor) => {
+const goToConsultation = (doctor: DoctorItem) => {
   router.push(`/consultation/${doctor.username}`);
 };
+
+onMounted(() => {
+  loadDoctors();
+});
 </script>
 
 <style scoped>

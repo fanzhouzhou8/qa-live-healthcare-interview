@@ -18,6 +18,7 @@ export interface Doctor {
 
 export interface Patient {
   id: string;
+  username?: string;
   name: string;
   birthday: string;
   phone: string;
@@ -89,6 +90,15 @@ export const store = {
 
     state.currentPatient = patient;
     return patient;
+  },
+
+  // 后端登录成功后写入当前患者会话
+  setCurrentPatient(patient: Patient) {
+    state.currentPatient = patient;
+    const exists = state.patients.some(p => p.id === patient.id);
+    if (!exists) {
+      state.patients.push(patient);
+    }
   },
 
   logoutPatient() {

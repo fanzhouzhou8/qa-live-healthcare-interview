@@ -3,19 +3,19 @@
     <div class="consultation-container">
       <div v-if="!currentPatient" class="auth-section">
         <div class="auth-card">
-          <h1>患者身份验证</h1>
-          <p>请输入您的姓名和生日以验证身份</p>
+          <h1>问诊用户登录</h1>
+          <p>请使用用户名和密码登录后进行问诊</p>
           <a-form
             :model="authForm"
             :rules="authRules"
-            @finish="verifyPatient"
+            @finish="handleLogin"
             layout="vertical"
           >
-            <a-form-item label="姓名" name="name">
+            <a-form-item label="用户名" name="username">
               <a-input
-                v-model:value="authForm.name"
+                v-model:value="authForm.username"
                 size="large"
-                placeholder="请输入您的姓名"
+                placeholder="请输入用户名"
               >
                 <template #prefix>
                   <UserOutlined />
@@ -23,26 +23,28 @@
               </a-input>
             </a-form-item>
 
-            <a-form-item label="生日" name="birthday">
-              <a-date-picker
-                v-model:value="authForm.birthday"
+            <a-form-item label="密码" name="password">
+              <a-input-password
+                v-model:value="authForm.password"
                 size="large"
-                format="YYYY-MM-DD"
-                placeholder="请选择您的生日"
-                style="width: 100%"
-              />
+                placeholder="请输入密码"
+              >
+                <template #prefix>
+                  <LockOutlined />
+                </template>
+              </a-input-password>
             </a-form-item>
 
             <a-form-item>
-              <a-button type="primary" html-type="submit" size="large" block>
-                验证身份
+              <a-button type="primary" html-type="submit" size="large" block :loading="loginLoading">
+                登录
               </a-button>
             </a-form-item>
           </a-form>
 
           <a-alert
-            message="提示"
-            description="输入任意姓名和生日即可使用。首次输入会自动创建账户,再次输入相同信息即可登录。"
+            message="测试账号提示"
+            description="用户名: patient_zhaoming，密码: 123456"
             type="info"
             show-icon
           />
@@ -61,7 +63,7 @@
           <div class="portal-actions">
             <a-button @click="logoutPatient">
               <LogoutOutlined />
-              切换用户
+              退出登录
             </a-button>
           </div>
         </div>
@@ -166,13 +168,15 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import {
   UserOutlined,
+  LockOutlined,
   LogoutOutlined,
   PlusOutlined
 } from '@ant-design/icons-vue';
 import { store, Doctor } from '../store';
+import { loginPatient } from '../api/patient';
 
 const route = useRoute();
 
@@ -184,15 +188,16 @@ const myQuestions = computed(() =>
 );
 
 const selectedDoctor = ref<Doctor | null>(null);
+const loginLoading = ref(false);
 
 const authForm = reactive({
-  name: '',
-  birthday: null as Dayjs | null,
+  username: '',
+  password: '',
 });
 
 const authRules = {
-  name: [{ required: true, message: '请输入姓名' }],
-  birthday: [{ required: true, message: '请选择生日' }],
+  username: [{ required: true, message: '请输入用户名' }],
+  password: [{ required: true, message: '请输入密码' }],
 };
 
 const submitModalVisible = ref(false);
@@ -220,30 +225,32 @@ onMounted(() => {
   }
 });
 
-const verifyPatient = () => {
-  const birthday = authForm.birthday?.format('YYYY-MM-DD');
-  if (!birthday) {
-    message.error('请选择生日');
-    return;
-  }
-
-  const existingPatientCount = store.state.patients.filter(
-    p => p.name === authForm.name && p.birthday === birthday
-  ).length;
-
-  store.verifyPatient(authForm.name, birthday);
-
-  if (existingPatientCount > 0) {
-    message.success('验证成功,欢迎回来!');
-  } else {
-    message.success('首次登录,已为您创建账户!');
+const handleLogin = async () => {
+  loginLoading.value = true;
+  try {
+    const profile = await loginPatient(authForm.username.trim(), authForm.password);
+    store.setCurrentPatient({
+      id: profile.id,
+      username: profile.username,
+      name: profile.name,
+      birthday: profile.birthday || '',
+      phone: profile.phone || '',
+      gender: profile.gender || '',
+    });
+    message.success('登录成功');
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '用户名或密码错误');
+  } finally {
+    loginLoading.value = false;
   }
 };
 
 const logoutPatient = () => {
   store.logoutPatient();
   selectedDoctor.value = null;
-  message.success('已切换用户');
+  authForm.username = '';
+  authForm.password = '';
+  message.success('已退出登录');
 };
 
 const clearSelectedDoctor = () => {

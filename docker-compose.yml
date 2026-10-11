@@ -1,6 +1,7 @@
 services:
   mysql:
-    image: mysql:8.0
+    # 使用国内镜像加速拉取（等价于官方 mysql:8.0）
+    image: docker.m.daocloud.io/library/mysql:8.0
     container_name: qa-mysql
     restart: unless-stopped
     environment:
@@ -9,8 +10,10 @@ services:
       MYSQL_USER: qa
       MYSQL_PASSWORD: qa123
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
+    # 不映射到宿主机端口，避免与本机 MySQL 冲突；phpMyAdmin 通过容器网络访问
+    # 如需本机直连容器库，可改为 "13306:3306"
+    # ports:
+    #   - "13306:3306"
     volumes:
       - qa-mysql-data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
@@ -24,7 +27,8 @@ services:
       retries: 20
 
   phpmyadmin:
-    image: phpmyadmin:5
+    # 使用国内镜像加速拉取（等价于官方 phpmyadmin:5）
+    image: docker.m.daocloud.io/library/phpmyadmin:5
     container_name: qa-phpmyadmin
     restart: unless-stopped
     depends_on:
